@@ -1,196 +1,77 @@
-# Orders Analytics Pipeline — Groupon Case Study
+# Orders Analytics Pipeline
 
 Welcome to the **Orders Analytics Pipeline** repository! 🚀
 
-This project demonstrates an end-to-end analytical engineering solution built on **BigQuery**: from raw CSV ingestion and data quality resolution, through a modular cleaning pipeline, to a customer-grain analytical model ready for retention, cohort, and profitability analysis.
+This project delivers an end-to-end analytical engineering solution on BigQuery: raw CSV ingestion, a modular 5-step cleaning pipeline, and a customer-grain analytical model supporting retention, cohort, and profitability analysis.
+
+
+## 🏗️ Architecture
+
+![alt text](<data_architecture - analytics_engineering.drawio.png>)
+
+| Resource | Link |
+|---|---|
+| BigQuery Project | [analytical-engineer-project](https://console.cloud.google.com/bigquery?project=analytical-engineer-project) |
+| Looker Studio Dashboard | [Platform Performance & Strategy]([https://datastudio.google.com/reporting/6069a66f-2aeb-4216-aa70-f1c7c4f3e64f/page/h0cvF/edit](https://datastudio.google.com/reporting/6069a66f-2aeb-4216-aa70-f1c7c4f3e64f)) |
+
 ---
 
 ## 🗂️ Repository Structure
 
 ```
 orders-analytics-pipeline/
-│
-├── pipeline/                        # Assignment 1 · Data cleaning pipeline
-│   ├── step_00_raw_union.sql        # Union of both source CSVs, zero transformations
-│   ├── step_01_type_casting.sql     # SAFE_CAST all columns to correct types
-│   ├── step_02_standardisation.sql  # Trim, casing, platform normalisation
-│   ├── step_03_cleaning_missing_values.sql  # Resolve null customer_country
-│   ├── step_04_deduplication.sql    # Remove duplicate order_uuid rows
-│   └── step_05_publish_analytics.sql        # Publish to analytics layer with column docs
-│
-├── models/                          # Assignment 2A · Customer analytical model
-│   └── assignment_2a_master_customer.sql
-│
-├── analysis/                        # Assignment 2B · Business questions
-│   ├── q1_revenue_mix_retention.sql
-│   └── q2_platform_performance.sql
-│
-├── validation/                      # Data quality checks
-│   ├── data_quality_audit.sql       # Pre/post pipeline profiling
-│   └── validation_financial_columns.sql     # 12 business-rule checks on financial fields
-│
-└── docs/
-    ├── assignment1_summary.md       # Written summary: issues found and fixed
-    ├── assignment2_interpretation.md
-    ├── assignment3_written.md       # Written answers to engineering questions
-    └── ai_usage.md                  # How AI tools were used at each stage
+├── pipeline/               # Steps 00–05: union → cast → standardise → clean → dedupe → publish
+├── models/                 # step_06_master_customer.sql
+├── analysis/               # q1_revenue_mix_retention.sql 
+├── validation/             # validation_all.sql 
+├── assets/                 # data_architecture.png
+└── docs/                   # README.md · architecture.drawio
 ```
 
 ---
 
-## 🏗️ Data Architecture
+## Assignment 1 · Data Cleaning & Preparation
 
-The pipeline follows a three-layer architecture on BigQuery:
+The pipeline was intentionally designed as five independent scripts rather than a single monolithic query. Each step has one responsibility, reads from the previous step's output, and can be rerun in isolation on failure.
 
-```
-Source CSVs
-    │
-    ▼
-┌──────────────────────────────────────┐
-│  raw layer                           │
-│  Unmodified union of both files      │
-│  Table: raw.orders_union             │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│  staging layer                       │
-│  Type casting → Standardisation      │
-│  → Cleaning → Deduplication          │
-│  Tables: staging.orders_typed        │
-│          staging.orders_standardised │
-│          staging.orders_clean        │
-│          staging.orders_deduped      │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌──────────────────────────────────────┐
-│  analytics layer                     │
-│  Analysis-ready tables               │
-│  Tables: analytics.orders            │
-│          analytics.master_customer   │
-│          analytics.orders_quality_log│
-└──────────────────────────────────────┘
-```
+**Key decisions:**
+- **Deduplication** was included even though no duplicates existed in the source data. Boundary overlaps between incremental loads are a common production failure mode — having the logic in place avoids a late-stage incident.
+- **Platform standardisation** was applied proactively. Inconsistent casing is one of the most frequent issues when new data sources are onboarded, and the cost of adding it now is near zero.
+- **Native BigQuery SQL over dbt** — chosen to minimise toolchain complexity while maintaining full modularity. No additional dependencies, no new infrastructure.
 
-Each pipeline step is a **self-contained script** with a single responsibility. If a step fails, only that step needs to be rerun — not the full pipeline.
+All validation queries were executed manually after each step. The final output is a single clean, integrated table in the analytics layer with column-level descriptions embedded via `OPTIONS(description=...)`, visible natively in BigQuery and Looker.
 
 ---
 
-## 📦 Data Sources
+## Assignment 2 · SQL Analysis
 
-| File | Period | Rows |
-|---|---|---|
-| `orders_historical.csv` | Jan 2021 – Jun 2023 | — |
-| `orders_2024_2025.csv` | Jul 2023 – Feb 2025 | — |
+#### Part A — Master Customer Table
 
-Both files share an identical schema and together form a single logical dataset. See [`docs/assignment1_summary.md`](docs/assignment1_summary.md) for a full description of the fields.
+`analytics.master_customer` aggregates the event-level table to one row per `user_uuid` across five column groups: identity, cohort & lifecycle, activity, financials (USD), and retention signals.
 
----
+**Validation approach:** beyond aggregate checks, a specific user with 11 transactions was traced end-to-end through the model to verify that customer grain, order counts, and financial totals were consistent with the raw event data. Record-level spot checks are a practical complement to automated validation.
 
-## 🔧 Assignment 1 · Data Cleaning & Preparation
+#### Part B — Business Questions
 
-**Objective:** Merge both files into a single analysis-ready dataset, resolve data quality issues, and standardise columns.
+Business logic is encapsulated in BigQuery views. Looker Studio connects to those views rather than raw tables — this keeps the dashboard consistent and maintainable as the underlying data evolves.
 
-### Issues found and fixed
+- **Q1 · Revenue Mix & Retention** — gross bookings by activation, reactivation, and retained regulars, tracked monthly across the full history.
+- **Q2 · Platform Performance** — app vs web across average order value, purchase frequency, and gross profit per customer, plus platform share over time.
 
-| # | Issue | Fix applied |
-|---|---|---|
-| 1 | Mixed-case `platform` values (`App`, `APP`, `web`) | Normalised to lowercase; unknown values flagged in quality log |
-| 2 | Missing `customer_country` on a subset of rows | Three-level waterfall: original value → same-user backfill → city lookup |
-| 3 | Leading/trailing whitespace on string columns | `TRIM()` applied at ingestion |
-| 4 | Inconsistent city casing (`NEW YORK`, `new york`) | `INITCAP(LOWER(...))` applied |
-| 5 | Duplicate `order_uuid` rows near file boundary | Deduplicated, keeping historical file as authoritative source |
-| 6 | Numeric columns loaded as strings from CSV | `SAFE_CAST(...AS FLOAT64)` — failures become NULL and are surfaced in audit |
-
-Full write-up: [`docs/assignment1_summary.md`](docs/assignment1_summary.md)
+> 📊 [View the live dashboard]([https://lookerstudio.google.com/your-link-here](https://datastudio.google.com/reporting/6069a66f-2aeb-4216-aa70-f1c7c4f3e64f))
 
 ---
 
-## 📊 Assignment 2 · SQL Analysis
+## Assignment 3 · Engineering Thinking
 
-### Part A — Master Customer Table
+**Financial column conventions**
+The `_operational` suffix flags columns that must be currency-normalised before any cross-country aggregation. Without applying `fx_rate_loc_to_usd_fxn`, financial metrics are summed across different local currencies and the result is meaningless — equivalent to adding euros, pounds, and dollars as the same unit.
 
-`analytics.master_customer` aggregates the event-level orders table to **one row per customer**, with five column groups designed to support the requested analyses out of the box:
+**Inflated customer count**
+If a stakeholder reports ~15% more customers than expected, I would investigate in this order: first, inspect the aggregation logic in `master_customer` and compare distinct `user_uuid` counts before and after grouping; second, check whether `analytics.orders` itself contains duplicates that should have been caught earlier in the pipeline; third, if both layers look clean, trace the issue back to the source files to identify whether the same customer appears under multiple identifiers at ingestion.
 
-| Group | Key columns |
-|---|---|
-| Identity | `user_uuid`, `customer_country`, `primary_platform` |
-| Cohort & lifecycle | `first_order_date`, `cohort_month`, `last_order_date`, `days_since_last_order` |
-| Activity | `total_orders`, `total_sessions`, `is_multi_platform` |
-| Financials (USD) | `gross_bookings_usd`, `margin_1_usd`, `avg_order_value_usd`, `promo_usage_rate` |
-| Retention signals | `customer_segment`, `total_reactivations`, `refund_rate`, `is_active_last_12m` |
-
-Reactivation definition follows the assignment spec: any order where the gap since the previous order exceeds 365 days.
-
-### Part B — Business Questions
-
-**Q1 · Customer Revenue Mix & Retention**
-Revenue segmented by activation, reactivation, and retained regulars — tracked monthly to show how the mix has shifted over the full dataset history.
-
-**Q2 · Platform Performance & Strategy**
-App vs web comparison across average order value, purchase frequency, and gross profit per customer, plus app share of gross bookings over time.
-
-Full SQL and written interpretations: [`docs/assignment2_interpretation.md`](docs/assignment2_interpretation.md)
-
----
-
-## ✅ Data Quality Framework
-
-Beyond the pipeline cleaning steps, a dedicated validation layer runs **12 business-rule checks** on the financial columns:
-
-| Check | Rule |
-|---|---|
-| F01 | `fx_rate` is positive and within plausible range |
-| F02 | No NULLs on any financial column |
-| F03–F04 | `list_price` and `deal_discount` are non-negative |
-| F05 | Discount does not exceed list price |
-| F06 | `gross_bookings = list_price − discount` (within tolerance) |
-| F07–F08 | Sign of `gross_bookings` is consistent with `last_status` |
-| F09 | `margin_1` and `vfm` are negative on refunded rows |
-| F10–F11 | `vfm ≤ margin_1 ≤ gross_bookings` hierarchy is respected |
-| F12 | FX rate is consistent within the same country and date |
-
-All checks return zero rows on a clean dataset. A summary dashboard query gives a single-glance PASS/FAIL view across all checks.
-
----
-
-## 🛠️ How to Run
-
-### Prerequisites
-- BigQuery project with datasets: `source`, `raw`, `staging`, `analytics`
-- Both CSV files loaded into `source.orders_historical` and `source.orders_2024_2025`
-
-### Full pipeline run
-Execute scripts in order:
-
-```
-pipeline/step_00 → step_01 → step_02 → step_03 → step_04 → step_05
-```
-
-Then build the analytical model:
-
-```
-models/assignment_2a_master_customer.sql
-```
-
-### Partial rerun after a failure
-Each step reads from the previous step's output. If step 03 fails, rerun from step 03 onwards — steps 00, 01, and 02 do not need to be rerun.
-
-### Replace project references
-All scripts use `your_project` as a placeholder. Replace with your actual BigQuery project ID before running.
-
----
-
-## 📋 Assignment 3 · Engineering Thinking
-
-Written answers to three data quality and engineering questions:
-
-- Financial column conventions and USD conversion
-- Investigating an inflated customer count
-- Making a data model trustworthy for other analysts
-
-Full answers: [`docs/assignment3_written.md`](docs/assignment3_written.md)
+**Making the model trustworthy**
+Trust is built incrementally and in collaboration with the team, not through documentation alone. Three concrete practices: define what constitutes a unique customer together with stakeholders and encode those rules as explicit SQL validation checks — creating a shared, traceable definition. Maintain a lightweight trend report showing how key metrics evolve month-over-month so anomalies surface before they reach stakeholders. Document every field with its valid values, business rule, and edge case behaviour directly in BigQuery via `OPTIONS(description=...)` so any analyst can understand the model without reverse-engineering the SQL.
 
 ---
 
@@ -202,7 +83,7 @@ This project is licensed under the [MIT License](LICENSE). You are free to use, 
 
 ## 🙌 About Me
 
-Hi! I'm **Erika Olaya**, an analytically-minded data professional passionate about building pipelines that are clean, well-documented, and actually trusted by the people who use them.
+Hi! I'm **Erika Olaya**, a data professional passionate about building pipelines that are clean, well-documented, and trusted by the people who use them.
 
 This is my submission for Groupon's Analytical Engineer case study — feedback very welcome! 😊
 
