@@ -3,11 +3,6 @@
 Welcome to the **Orders Analytics Pipeline** repository! 🚀
 
 This project demonstrates an end-to-end analytical engineering solution built on **BigQuery**: from raw CSV ingestion and data quality resolution, through a modular cleaning pipeline, to a customer-grain analytical model ready for retention, cohort, and profitability analysis.
-
-Designed as a case study for Groupon's Analytical Engineer interview process, it reflects industry best practices in data pipeline design, SQL modelling, and documentation.
-
-> 🤖 **AI usage note:** Claude (Anthropic) was used throughout this project as a coding assistant. A full breakdown of what was AI-generated, what was reviewed, and what decisions were made independently is documented in [`docs/ai_usage.md`](docs/ai_usage.md).
-
 ---
 
 ## 🗂️ Repository Structure
