@@ -88,4 +88,4 @@ Hi! I'm **Erika Olaya**, a data professional passionate about building pipelines
 
 This is my submission for Groupon's Analytical Engineer case study — feedback very welcome! 😊
 
-[![LinkedIn](https://www.linkedin.com/in/erikaolaya-data/)
+[[![LinkedIn](https://www.linkedin.com/in/erikaolaya-data/)](https://www.linkedin.com/in/erikaolaya-data/)
