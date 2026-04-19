@@ -7,12 +7,13 @@ This project delivers an end-to-end analytical engineering solution on BigQuery:
 
 ## 🏗️ Architecture
 
-![alt text](<data_architecture - analytics_engineering.drawio.png>)
+<img width="1703" height="912" alt="data_architecture - analytics_engineering drawio" src="https://github.com/user-attachments/assets/90d7b47e-cd93-44d1-9ace-d5cd2025f058" />
+
 
 | Resource | Link |
 |---|---|
 | BigQuery Project | [analytical-engineer-project](https://console.cloud.google.com/bigquery?project=analytical-engineer-project) |
-| Looker Studio Dashboard | [Platform Performance & Strategy]([https://datastudio.google.com/reporting/6069a66f-2aeb-4216-aa70-f1c7c4f3e64f/page/h0cvF/edit](https://datastudio.google.com/reporting/6069a66f-2aeb-4216-aa70-f1c7c4f3e64f)) |
+| Looker Studio Dashboard | https://datastudio.google.com/reporting/6069a66f-2aeb-4216-aa70-f1c7c4f3e64f |
 
 ---
 
