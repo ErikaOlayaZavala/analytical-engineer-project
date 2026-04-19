@@ -86,6 +86,6 @@ This project is licensed under the [MIT License](LICENSE). You are free to use, 
 
 Hi! I'm **Erika Olaya**, a data professional passionate about building pipelines that are clean, well-documented, and trusted by the people who use them.
 
-This is my submission for Groupon's Analytical Engineer case study — feedback very welcome! 😊
+This is my submission for Analytical Engineer case study — feedback very welcome! 😊
 
-[[![LinkedIn](https://www.linkedin.com/in/erikaolaya-data/)](https://www.linkedin.com/in/erikaolaya-data/)
+
